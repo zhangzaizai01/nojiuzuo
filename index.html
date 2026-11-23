@@ -229,13 +229,13 @@ body[data-state="guiding"] #stats{ opacity:0; }
 }
 #installBtn:active{ transform:translateX(-50%) scale(.95); }
 
-/* 演示/预览小按钮 */
-#demoPopupBtn, #notifyBtn, #previewBtn{
+/* 通知授权入口 */
+#notifyBtn{
   margin-top:10px; border:none; min-height:36px;
   font-size:12px; color:var(--ink-soft); letter-spacing:.2em;
   border-bottom:1px solid var(--line); border-radius:0;
 }
-#demoPopupBtn:disabled, #notifyBtn:disabled, #previewBtn:disabled{ opacity:.45; }
+#notifyBtn:disabled{ opacity:.45; }
 
 @media (min-width:600px){
   #timerWrap{ width:300px; }
@@ -272,11 +272,9 @@ body[data-state="guiding"] #stats{ opacity:0; }
 
 <button id="soundBtn">声音：关</button>
 <div id="soundHint">静坐倒计时结束后会提醒您起身</div>
-<button id="demoPopupBtn" hidden>试 弹 窗 效 果</button>
 <button id="notifyBtn" hidden>开 启 系 统 提 醒</button>
-<button id="previewBtn">预 览 到 点 效 果</button>
 
-<div id="stats">今日起身 0 次 · 累计木鱼 0 颗</div>
+<div id="stats">今日起身 0 次</div>
 
 <div id="disclaimer">本工具仅供娱乐打卡，不替代医生康复方案。若出现下肢放射痛加重、麻木扩散、大小便异常，请立即停止并就医。</div>
 
@@ -342,7 +340,7 @@ var riseData = null;
 try{ riseData = JSON.parse(ls(K.rise) || "null"); }catch(e){ riseData = null; }
 if(!riseData || riseData.d !== today()) riseData = { d: today(), n: 0 };
 function renderStats(){
-  $("stats").textContent = "今日起身 " + riseData.n + " 次 · 累计木鱼 " + fish + " 颗";
+  $("stats").textContent = "今日起身 " + riseData.n + " 次";
 }
 renderStats();
 
@@ -508,14 +506,6 @@ $("soundBtn").onclick = function(){
 $("soundHint").addEventListener("animationend", function(){
   this.classList.remove("show");
 });
-/* 演示模式：显示手动触发弹窗的按钮 */
-if(demo) $("demoPopupBtn").hidden = false;
-$("demoPopupBtn").onclick = function(){
-  actx();
-  knock();
-  showCenterPopup();
-};
-
 /* ---------- 系统通知：显式授权入口，授权后立即发一条测试横幅 ---------- */
 var notifyBtn = $("notifyBtn");
 function refreshNotifyBtn(){
@@ -523,6 +513,9 @@ function refreshNotifyBtn(){
   notifyBtn.hidden = (Notification.permission === "granted");
   if(Notification.permission === "denied"){
     notifyBtn.textContent = "提醒已被拒绝 · 请到浏览器地址栏站点设置里允许通知";
+  }else if(location.protocol === "file:"){
+    /* 本地双击打开（file://）：Chrome 无法持久保存通知权限 */
+    notifyBtn.textContent = "file:// 下通知不可靠 · 建议部署 GitHub Pages（https）后使用";
   }else{
     var ua = navigator.userAgent || "";
     var isSafari = /safari/i.test(ua) && !/chrome|crios|fxios|edg/i.test(ua);
@@ -541,35 +534,6 @@ notifyBtn.onclick = function(){
       try{ new Notification("久坐判官殿", { body: "提醒已开启：倒计时结束后会叫您起身", tag: "jiuzuo-on" }); }catch(e){}
     }
   }).catch(function(){});
-};
-
-/* 到点效果预览：3 秒后敲钟 + 系统通知（已授权时） */
-$("previewBtn").onclick = function(){
-  actx();
-  var self = this;
-  /* 顺手补一次权限申请：此刻是用户手势，授权框能弹出来 */
-  if("Notification" in window && Notification.permission === "default"){
-    Notification.requestPermission().then(refreshNotifyBtn).catch(function(){});
-  }
-  self.disabled = true;
-  var left = 3;
-  self.textContent = "3 秒后演示…";
-  var iv = setInterval(function(){
-    left--;
-    if(left > 0){
-      self.textContent = left + " 秒后演示…";
-    }else{
-      clearInterval(iv);
-      self.textContent = "预 览 到 点 效 果";
-      self.disabled = false;
-      bell();                                   /* 敲钟一声 */
-      if("Notification" in window && Notification.permission === "granted"){
-        try{
-          new Notification("久坐判官殿", { body: dharma + "\n请起身", tag: "jiuzuo-preview" });
-        }catch(e){}
-      }
-    }
-  }, 1000);
 };
 
 /* ---------- 倒计时 ---------- */
